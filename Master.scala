@@ -4,25 +4,30 @@ import akka.routing.ActorRefRoutee
 import akka.routing.Router
 import akka.routing.RoundRobinRoutingLogic
 import akka.routing.RoundRobinRouter
+import com.sun.org.apache.xpath.internal.operations.Bool
 
-case class workRange(start : Char)
+case class continueWork()
 
 class Master extends Actor {
 
-  var numberOfWorkers: Int = 65
+	// SET THESE VARIABLES USING ARG LIST OR MANUALLY AS REQUIRED
+	var numberOfWorkers: Int = 4
+	var elementsToFind : Int = 3
+	var numberOfZeroes : Int = 5
+	
 	var elementsFound : Int = 0
-	var numberOfZeroes : Int = 1
 	var startChar : Char = '!'
+	var CheckIfExitSent : Int = 0
 	val workers = context.actorOf(Props[Worker].withRouter(RoundRobinRouter(numberOfWorkers)), name = "workers")
 	//var workers = context.actorOf(Props(classOf[Worker],numberOfZeroes), "workers")
 	for(i <- 0 until numberOfWorkers )
-	  workers ! start(numberOfZeroes)
-  
+	{   workers ! start(numberOfZeroes, startChar)
+		startChar = ((startChar.toInt) + 1).toChar
+	}
   def receive =
   {
     case "exit" =>
 	  {	
-	    println("band karo dukkan")
 	    numberOfWorkers = numberOfWorkers - 1
     	if(numberOfWorkers == 0)
     	{
@@ -30,14 +35,20 @@ class Master extends Actor {
     		context.stop(self)
     	}
 	  }
-	  case "Give Me Work" =>{ sender ! workRange(startChar)
-	    startChar = ((startChar.toInt) + 1).toChar
+	  case "shouldIContinue" => {
+	    if(elementsFound <= elementsToFind )
+	    	sender ! continueWork()
+	    else if(CheckIfExitSent == 0)
+	    {  	CheckIfExitSent = 1
+	    	for(i <- 0 until numberOfWorkers )
+			  	workers ! "exit"
+	    }
 	  }
 	  case found(foundElement) =>
 	  {	  //println("Master : found " + foundElement)
 	  	  elementsFound = elementsFound + 1
 	  	  println("Master : Elements found = " + elementsFound)
-		  if(elementsFound >= 100)
+		  if(elementsFound >= elementsToFind )
 		  {  for(i <- 0 until numberOfWorkers )
 			  	workers ! "exit"
 		  }  
